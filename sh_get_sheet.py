@@ -1,5 +1,4 @@
 import smartsheet
-import json
 
 smart = smartsheet.Smartsheet()
 
@@ -38,7 +37,7 @@ def get_sheet_data(smart, da_sheets):
                 except KeyError:
                     pass
 
-        fact_sheet_output.update(row_data)
+            fact_sheet_output[row_data['Task Name']] = row_data
 
     return fact_sheet_output
 
