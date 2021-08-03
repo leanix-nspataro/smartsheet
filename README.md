@@ -57,6 +57,10 @@ Either source the .bash_profile or restart your terminal.
 
 base_json is initally defined with the metadata for a Smartsheet LDIF.  Column names from Smartsheet are trasformed via the field_mapper dict to fit the LDIF schema.
 
+```
+python3 sh_get_sheet.py 
+```
+
 ### Current functionality
 - list all sheets 
 - get data from all sheets
