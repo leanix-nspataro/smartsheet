@@ -6,7 +6,7 @@
 - smartsheet-python-sdk
 
 ## Abstract
-The purpose of these scripts is to extract data from Smartsheet and transform it to LDIF.  Mapping files to the EAS inbound processors will also be included.
+The purpose of this script is to extract data from Smartsheet and transform it to LeanIX Data Interchange Format (LDIF).  A mapping file to the inbound processors will also be included.
 
 ## Smartshee API
 
@@ -53,6 +53,12 @@ Either source the .bash_profile or restart your terminal.
 
 ## sh_get_sheet.py
 
+### Running
+
+base_json is initally defined with the metadata for a Smartsheet LDIF.  Column names from Smartsheet are trasformed via the field_mapper dict to fit the LDIF schema.
+
 ### Current functionality
 - list all sheets 
 - get data from all sheets
+- transform data to ldif
+- output ldif json file
