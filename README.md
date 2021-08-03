@@ -38,7 +38,6 @@ BEWARE: Mac does not automatically source .bash_profile.  If you'll be using .ba
 
 ```
 if [ -f ~/.bash_profile ]; then
-
   . ~/.bash_profile
 fi
 ```
