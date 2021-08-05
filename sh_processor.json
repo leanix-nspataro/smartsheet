@@ -1,0 +1,98 @@
+{
+	"processors": [
+		{
+			"processorType": "inboundFactSheet",
+			"processorName": "Projects from Smartsheet",
+			"processorDescription": "Creates LeanIX Projects from Smartsheet",
+			"type": "Project",
+			"enabled": true,
+			"filter": {
+				"exactType": "Project"
+			},
+			"identifier": {
+				"external": {
+					"id": {
+						"expr": "${content.id}"
+					},
+					"type": {
+						"expr": "externalId"
+					}
+				}
+			},
+			"run": 0,
+			"create": [
+				{
+					"key": {
+						"expr": "name"
+					},
+					"values": [
+						{
+							"expr": "${data.taskName}"
+						}
+					]
+				},
+				{
+					"key": {
+						"expr": "lifecycle.endOfLife"
+					},
+					"values": [
+						{
+							"expr": "${data.dueDate}"
+						}
+					]
+				},
+				{
+					"key": {
+						"expr": "projectStatus"
+					},
+					"values": [
+						{
+							"expr": "${data.Status}"
+						}
+					]
+				}
+			],
+			"logLevel": "debug"
+		},
+		{
+			"processorType": "inboundSubscription",
+			"processorName": "Subscription creation",
+			"processorDescription": "Creates subscriptions",
+			"filter": {
+			  "exactType": "Project"
+			},
+			"identifier": {
+			  "external": {
+				"id": {
+				  "expr": "${content.id}"
+				},
+				"type": {
+				  "expr": "externalId"
+				}
+			  }
+			},
+			"updates": [
+			  {
+				"key": {
+					"expr": "user"
+				  },
+				  "values": [
+					{
+					  "expr": "${data.assignedTo}"
+				  }
+				]
+			  },
+			  {
+				"key": {
+				  "expr": "subscriptionType"
+				},
+				"values": [
+				  {
+					"expr": "RESPONSIBLE"
+				  }
+				]
+			  }
+			]
+		  }
+	]
+}
