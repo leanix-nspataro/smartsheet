@@ -32,17 +32,6 @@ The easiest way to use this token with the SDK is to create an environment varia
 vim ~/.bash_profile
 ```
 
-=========================================================
-
-BEWARE: Mac does not automatically source .bash_profile.  If you'll be using .bash_profile, make sure your .zshrc sources it:
-
-```
-if [ -f ~/.bash_profile ]; then
-  . ~/.bash_profile
-fi
-```
-=========================================================
-
 Add a new line in your .bash_profile with the token
 
 ```
@@ -53,6 +42,16 @@ Then run:
 ```
 source ~/.bash_profile
 ```
+=========================================================
+
+BEWARE: Mac does not automatically source .bash_profile.  If you'll be using .bash_profile, make sure your .zshrc sources it:
+
+```
+if [ -f ~/.bash_profile ]; then
+  . ~/.bash_profile
+fi
+```
+=========================================================
 
 ## sh_get_sheet.py
 
