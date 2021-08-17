@@ -138,7 +138,7 @@
 			"processorDescription": "Creates subscriptions",
             "run": 1,
 			"filter": {
-			  "exactType": "Project"
+			  "exactType": "Task"
 			},
 			"identifier": {
 			  "external": {
