@@ -6,7 +6,7 @@
 - smartsheet-python-sdk
 
 ## Abstract
-The purpose of this script is to extract data from Smartsheet and transform it to LeanIX Data Interchange Format (LDIF).  An inbound processor json is also included, mapping the tasks to projects.  
+The purpose of this script is to extract data from Smartsheet, transform it to LeanIX Data Interchange Format (LDIF), and import it to a LeanIX workspace.  The relationship hierarchy goes: Workspace, Sheet, Task, Subtask.  As a best practice, we do not want to have more than four layers of a hierarchy (although the script does handle this).  
 
 ## Smartshee API
 
@@ -59,21 +59,24 @@ fi
 
 base_json is initally defined with the metadata for a Smartsheet LDIF.  Column names from Smartsheet are trasformed via the field_mapper dict to fit the LDIF schema.
 
+Obtain an API token from the LeanIX workspace and put it in api_token.  Ensure your auth and request url are correct. (lines 138 - 140 in sh_get_sheet.py)
+
 ```
 python3 sh_get_sheet.py 
 ```
 
 ### Current functionality
-- list all sheets 
-- get data from all sheets
+- list all workspaces, sheets, and sub/tasks
+- get data from all workspaces, sheets, and sub/tasks
 - transform data to ldif
 - output ldif json file
+- import ldif to LeanIX workspace
 
-## Import LDIF to EAS
+## Import LDIF to EAS manually
 - go to Administration in the top right drop down
 - go to Integration API in the left pane
 - click Starter Example
 - paste the processor in the left pane
 - paste the output lidf from the script into the Input pane on the top right
-- click Test run to check for warnings/errors
+- click Test run to check for warnings/errors < currently throwing warnings that can be ignored, to be fixed >
 - if successful, click run to ingest the data into the workspace
