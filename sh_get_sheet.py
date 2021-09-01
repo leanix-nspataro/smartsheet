@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import requests
 import re
+import logging
 
 top_level = "workspace"
 
@@ -12,14 +13,16 @@ field_mapper = {
     "Assigned To": "assignedTo"
 }
 
+logging.basicConfig(filename='smartsheet_audit.log', format='>> %(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+
 class smartsheetToLdif:
     ## connection to smartsheet
     smart = smartsheet.Smartsheet()
 
     ## base json and field mapping
     base_json = {
-        "connectorType": "Smartsheet Test-2",
-        "connectorId": "smartSheet-2",
+        "connectorType": "Smartsheet Test-3",
+        "connectorId": "smartSheet-3",
         "connectorVersion": "1.0.0",
         "lxVersion": "1.0.0",
         "description": "",
@@ -34,15 +37,19 @@ class smartsheetToLdif:
         self.sh_wkspc_map = {}
         self.all_wkspc = smart.Workspaces.list_workspaces()
         self.wkspc_arr = []
+        num_wkspc = 0
+        num_sht = 0
 
         for wkspc in self.all_wkspc.data:
+            num_wkspc += 1
             self.wkspc_arr.append([str(wkspc.id), wkspc.name])
             wkspc_data = smart.Workspaces.get_workspace(wkspc.id)
             # sheets and _sheets seem to be broken, works as dict
             wkspc_dict = wkspc_data.to_dict()
-
+            logging.debug('Workspace data: %s',str(wkspc_dict))
             # create map of sheets to workspaces
             for a_sheet in wkspc_dict["sheets"]:
+                num_sht += 1
                 str_id = str(a_sheet["id"])
                 new_wkspc = {}
                 new_wkspc[str_id] = {}
@@ -51,6 +58,7 @@ class smartsheetToLdif:
                 new_wkspc[str_id]["type"] = "workspace"
                 self.sh_wkspc_map.update(new_wkspc)
 
+        logging.info('Processing %i sheets from %i workspaces.', num_sht, num_wkspc)
         return self.wkspc_arr, self.sh_wkspc_map
 
 
@@ -62,6 +70,7 @@ class smartsheetToLdif:
         self.all_sheets = []
         # loop over sheets to get id"s
         for a_sheet in self.sheets:
+            logging.debug('Sheet data: %s', str(a_sheet.to_dict()))
             str_id = str(a_sheet.id)
             # example sheet: {"accessLevel": "OWNER", "createdAt": "2021-07-29T20:43:04+00:00Z", "id": 5473133349103492, "modifiedAt": "2021-07-30T14:04:39+00:00Z", "name": "projects", "permalink": "https://app.smartsheet.com/sheets/jfCMVXQ6jQF4H8PWJ3jGhJf75pxjwvX3VXv9CXV1"}
             row_data = {}
@@ -74,6 +83,7 @@ class smartsheetToLdif:
                 row_data["data"]["parentId"] = sht_wkspc_map[str_id]["wkspc_id"]
             self.all_sheets.append(row_data)
 
+        logging.info('Processing %i total sheets (including from workspaces).', len(self.all_sheets))
         return self.all_sheets
 
     ## returns dict of sheet data to feed ldif
@@ -81,8 +91,13 @@ class smartsheetToLdif:
         self.all_columns = {}
         self.all_sheet_data = []
         self.i = 1
+        self.webhook_map = {}
+        num_sht = 0
+        num_row = 0
+        num_cell = 0
 
         for a_sheet in all_sheets:
+            num_sht += 1
             sheet_data = smart.Sheets.get_sheet(int(a_sheet["id"])) 
             # populate dict of column id:name 
             for a_column in sheet_data.columns:
@@ -90,6 +105,8 @@ class smartsheetToLdif:
 
             # build dict for each row
             for a_row in sheet_data.rows:
+                logging.debug('Row data: %s', str(a_row.to_dict()))
+                num_row += 1
                 row_data = {}
                 row_data["type"] = "Task"
                 row_data["id"] = str(a_row.id)
@@ -104,16 +121,25 @@ class smartsheetToLdif:
                 all_cells = a_row.cells
                 for a_cell in all_cells:
                     try:
+                        logging.debug('Cell data: %s', str(a_cell.to_dict()))
+                        # if str(a_sheet["id"]) not in self.webhook_map:
+                        #     self.webhook_map[str(a_sheet["id"])] = []
+                        #     self.webhook_map[str(a_sheet["id"])].append(a_cell._column_id.value)
+                        # else:
+                        #     self.webhook_map[str(a_sheet["id"])].append(a_cell._column_id.value)
+                        num_cell += 1
                         if self.all_columns[str(a_cell._column_id)] in field_mapper:
                             row_data["data"][field_mapper[self.all_columns[str(a_cell._column_id)]]] = a_cell._value
                         else:
                             row_data["data"][self.all_columns[str(a_cell._column_id)]] = a_cell._value
                     except KeyError:
+                        logging.debug('Column not in map: %s', str(a_cell._column_id))
                         pass
 
                 self.all_sheet_data.append(row_data)
 
-        return self.all_sheet_data 
+        logging.info('Extracted data from %i cells, %i rows, %i sheets.', num_cell, num_row, num_sht)
+        return self.all_sheet_data #, self.webhook_map
 
     ## transform 
     def transform_to_ldif(self, base_json, all_sheets, all_tasks, workspaces="None"):
@@ -134,7 +160,7 @@ class smartsheetToLdif:
 
         return base_json
 
-class ldifToWorkspace():
+class ldifToWorkspace:
     api_token = ""
     auth_url = "https://demo-us.leanix.net/services/mtm/v1/oauth2/token"
     request_url = "https://demo-us.leanix.net/services/integration-api/v1/"
@@ -143,7 +169,7 @@ class ldifToWorkspace():
     response.raise_for_status()
     header = {"Authorization": "Bearer " + response.json()["access_token"], "Content-Type": "application/json"}
 
-    with open("/Users/nathanielspataro/Documents/smartsheet/sh_processor4.json") as json_file:
+    with open("sh_processor4.json") as json_file:
         ldif_processor = json.load(json_file)
 
     def createProcessorRun(self, ldif_processor, request_url, header, api_token):
@@ -186,29 +212,28 @@ class ldifToWorkspace():
     def startRun(self, run, request_url, header):
         response = requests.post(url=request_url + "synchronizationRuns/" + run["id"] + "/start?test=false", headers=header)
 
-    def status(run, request_url, header):
-        response = requests.get(url=request_url + "synchronizationRuns/" + run["id"] + "/status", headers=header)
-        return (response.json())
 
 if __name__ == "__main__":
+    logging.info('----- Start -----')
     #### Get smartsheet data, transform to LDIF
     sh = smartsheetToLdif()
     ## get data from Smartsheet
     workspaces, sht_wkspc_map = sh.get_all_workspaces(sh.smart)
     all_sheets = sh.get_all_sheets(sh.smart,sht_wkspc_map)
     all_tasks = sh.get_sheet_data(sh.smart, all_sheets, field_mapper)
+    # print(all_sheets)
     ## transform data to LDIF
     ldif_output = sh.transform_to_ldif(sh.base_json, all_sheets, all_tasks, workspaces)
+    logging.info('Trasformed data to LDIF.')
+    logging.debug('LDIF: %s', str(ldif_output))
     ## write LDIF to json
-    with open("/Users/nathanielspataro/Documents/smartsheet/smartsheet_ldif5.json", "w") as fp:
+    with open("smartsheet_ldif5.json", "w") as fp:
         json.dump(ldif_output, fp)
-
 
     #### send data to Lean IX workspace
     lx = ldifToWorkspace()
     lx.createProcessorRun(lx.ldif_processor, lx.request_url, lx.header, lx.api_token)
     run = lx.createRun(ldif_output, lx.request_url, lx.header)
     lx.startRun(run, lx.request_url, lx.header)
-    print("Started run...")
-    while (True):
-         if (lx.status(run, lx.request_url, lx.header)["status"] == "FINISHED"): break
+    logging.info('LDIF processed by LeanIX iAPI.')
+    logging.info('----- End -----')
