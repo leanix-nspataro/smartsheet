@@ -6,7 +6,7 @@
 - pyyaml
 
 ## Abstract
-The purpose of this script is to extract data from Smartsheet, transform it to LeanIX Data Interchange Format (LDIF), and load it into a LeanIX workspace.  The relationship hierarchy is structured: Workspace / Sheet / Task / Subtask.  As a best practice, we do not want to have more than four layers in a hierarchy (although the script does handle it).  This connector is meant to be run as a Lambda/Azure function on a schedule, using a key store as best practice.  
+The purpose of this script is to extract data from Smartsheet, transform it to LeanIX Data Interchange Format (LDIF), and load it into a LeanIX workspace.  The relationship hierarchy is structured: Workspace / Sheet / Task / Subtask.  As a best practice, we do not want to have more than four layers in a hierarchy (although the script will allow it).  This connector is meant to be run as a Lambda/Azure function on a schedule, using a key store as best practice.  
 
 ### Setup
 - Create a technical user in Smartsheet and LeanIX. 
