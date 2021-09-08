@@ -19,7 +19,7 @@ The purpose of this script is to extract data from Smartsheet, transform it to L
 - Insert key store code in sh_get_sheet.py on line 21, returning the Smartsheet API token.
 - Insert key store code in sh_get_sheet.py on line 165, returning the LeanIX API token.
 - Package the sh_processor.json and config.yml with sh_get_sheet.py and its dependendencies.  
-- Implement on serverless infrastructure in your cloud of choice.
+- Implement on serverless infrastructure in your cloud of choice or on-prem.
 
 ## Current functionality
 - list all workspaces, sheets, and sub/tasks
