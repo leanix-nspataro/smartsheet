@@ -1,28 +1,32 @@
 import smartsheet
-from datetime import datetime
 import json
 import requests
 import re
 import logging
+import sys
+import yaml
 
-top_level = "workspace"
+## Load config from yaml
+config = yaml.safe_load(open("config.yml"))
 
-field_mapper = {
-    "Due Date": "dueDate",
-    "Task Name": "taskName",
-    "Assigned To": "assignedTo"
-}
+## log handling
+logging.basicConfig(filename='smartsheet_audit.log', format='>> %(asctime)s - %(levelname)s - %(message)s', level=logging.set_log_level)
+def my_handler(type, value, tb):
+    logging.exception("Uncaught exception: {0}".format(str(value)))
+sys.excepthook = my_handler
 
-logging.basicConfig(filename='smartsheet_audit.log', format='>> %(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+## Smartsheet extraction and transformation
+class smartsheetToLdif():
+    ## Use a key store of your choice and return token to this variable
+    smartsheet_token = ""
 
-class smartsheetToLdif:
     ## connection to smartsheet
-    smart = smartsheet.Smartsheet()
+    smart = smartsheet.Smartsheet(str(smartsheet_token))
 
     ## base json and field mapping
     base_json = {
-        "connectorType": "Smartsheet Test-3",
-        "connectorId": "smartSheet-3",
+        "connectorType": "Smartsheet Test",
+        "connectorId": "smartSheet",
         "connectorVersion": "1.0.0",
         "lxVersion": "1.0.0",
         "description": "",
@@ -37,8 +41,7 @@ class smartsheetToLdif:
         self.sh_wkspc_map = {}
         self.all_wkspc = smart.Workspaces.list_workspaces()
         self.wkspc_arr = []
-        num_wkspc = 0
-        num_sht = 0
+        num_wkspc, num_sht = 0, 0
 
         for wkspc in self.all_wkspc.data:
             num_wkspc += 1
@@ -72,7 +75,6 @@ class smartsheetToLdif:
         for a_sheet in self.sheets:
             logging.debug('Sheet data: %s', str(a_sheet.to_dict()))
             str_id = str(a_sheet.id)
-            # example sheet: {"accessLevel": "OWNER", "createdAt": "2021-07-29T20:43:04+00:00Z", "id": 5473133349103492, "modifiedAt": "2021-07-30T14:04:39+00:00Z", "name": "projects", "permalink": "https://app.smartsheet.com/sheets/jfCMVXQ6jQF4H8PWJ3jGhJf75pxjwvX3VXv9CXV1"}
             row_data = {}
             row_data["type"] = "Sheet"
             row_data["id"] = str_id
@@ -92,9 +94,7 @@ class smartsheetToLdif:
         self.all_sheet_data = []
         self.i = 1
         self.webhook_map = {}
-        num_sht = 0
-        num_row = 0
-        num_cell = 0
+        num_sht, num_row, num_cell = 0, 0, 0
 
         for a_sheet in all_sheets:
             num_sht += 1
@@ -122,11 +122,6 @@ class smartsheetToLdif:
                 for a_cell in all_cells:
                     try:
                         logging.debug('Cell data: %s', str(a_cell.to_dict()))
-                        # if str(a_sheet["id"]) not in self.webhook_map:
-                        #     self.webhook_map[str(a_sheet["id"])] = []
-                        #     self.webhook_map[str(a_sheet["id"])].append(a_cell._column_id.value)
-                        # else:
-                        #     self.webhook_map[str(a_sheet["id"])].append(a_cell._column_id.value)
                         num_cell += 1
                         if self.all_columns[str(a_cell._column_id)] in field_mapper:
                             row_data["data"][field_mapper[self.all_columns[str(a_cell._column_id)]]] = a_cell._value
@@ -139,7 +134,7 @@ class smartsheetToLdif:
                 self.all_sheet_data.append(row_data)
 
         logging.info('Extracted data from %i cells, %i rows, %i sheets.', num_cell, num_row, num_sht)
-        return self.all_sheet_data #, self.webhook_map
+        return self.all_sheet_data 
 
     ## transform 
     def transform_to_ldif(self, base_json, all_sheets, all_tasks, workspaces="None"):
@@ -160,27 +155,33 @@ class smartsheetToLdif:
 
         return base_json
 
+## Load Smartsheet data to LeanIX workspace
 class ldifToWorkspace:
-    api_token = ""
-    auth_url = "https://demo-us.leanix.net/services/mtm/v1/oauth2/token"
-    request_url = "https://demo-us.leanix.net/services/integration-api/v1/"
-
-    response = requests.post(auth_url, auth=("apitoken", api_token), data={"grant_type": "client_credentials"})
-    response.raise_for_status()
-    header = {"Authorization": "Bearer " + response.json()["access_token"], "Content-Type": "application/json"}
-
-    with open("sh_processor4.json") as json_file:
+    ## Load inbound processor to variable
+    with open("sh_processor.json") as json_file:
         ldif_processor = json.load(json_file)
 
-    def createProcessorRun(self, ldif_processor, request_url, header, api_token):
+    ## Use a key store of your choice and return token to this variable
+    lix_api_token = ""
+
+    ## Create header for LeanIX connection
+    def createLeanixConnection(self, lix_api_token, auth_url):
+        self.response = requests.post(auth_url, auth=("apitoken", lix_api_token), data={"grant_type": "client_credentials"})
+        self.response.raise_for_status()
+        header = {"Authorization": "Bearer " + self.response.json()["access_token"], "Content-Type": "application/json"}
+
+        return header
+
+    ## Create connector processor if it does not exists
+    def createProcessorRun(self, ldif_processor, request_url, header, lix_api_token):
         self.data = {
-            "connectorType": "Smartsheet Test-3",
-            "connectorId": "smartSheet-3",
+            "connectorType": "Smartsheet Test",
+            "connectorId": "smartSheet",
             "connectorVersion": "1.0.0",
             "processingDirection": "inbound",
             "processingMode": "partial",
             "credentials": {
-                "apiToken": api_token
+                "apiToken": lix_api_token
             },
             "variables": {
                 "deploymentMaturity": {
@@ -193,10 +194,11 @@ class ldifToWorkspace:
         new_data = re.sub(r': True', ': true', self.data)
         response = requests.put(url=request_url + "configurations/", headers=header, data=new_data)
 
+    ## Create connector with LDIF content
     def createRun(self, content, request_url, header):
         self.data = {
-            "connectorType": "Smartsheet Test-3",
-            "connectorId": "smartSheet-3",
+            "connectorType": "Smartsheet Test",
+            "connectorId": "smartSheet",
             "connectorVersion": "1.0.0",
             "lxVersion": "1.0.0",
             "description": "Creates LeanIX Projects from Smartsheet workspaces",
@@ -209,6 +211,7 @@ class ldifToWorkspace:
         self.response = requests.post(url=request_url + "synchronizationRuns/", headers=header, data=json.dumps(self.data))
         return (self.response.json())
 
+    ## Process data / load into LeanIX workspace
     def startRun(self, run, request_url, header):
         response = requests.post(url=request_url + "synchronizationRuns/" + run["id"] + "/start?test=false", headers=header)
 
@@ -220,20 +223,18 @@ if __name__ == "__main__":
     ## get data from Smartsheet
     workspaces, sht_wkspc_map = sh.get_all_workspaces(sh.smart)
     all_sheets = sh.get_all_sheets(sh.smart,sht_wkspc_map)
-    all_tasks = sh.get_sheet_data(sh.smart, all_sheets, field_mapper)
-    # print(all_sheets)
+    all_tasks = sh.get_sheet_data(sh.smart, all_sheets, config.field_mapper)
     ## transform data to LDIF
     ldif_output = sh.transform_to_ldif(sh.base_json, all_sheets, all_tasks, workspaces)
     logging.info('Trasformed data to LDIF.')
     logging.debug('LDIF: %s', str(ldif_output))
-    ## write LDIF to json
-    with open("smartsheet_ldif5.json", "w") as fp:
-        json.dump(ldif_output, fp)
 
     #### send data to Lean IX workspace
     lx = ldifToWorkspace()
-    lx.createProcessorRun(lx.ldif_processor, lx.request_url, lx.header, lx.api_token)
-    run = lx.createRun(ldif_output, lx.request_url, lx.header)
-    lx.startRun(run, lx.request_url, lx.header)
+    logging.info('Begin data load into LeanIX iAPI.')
+    lix_header = lx.createLeanixConnection(lx.lix_api_token, config.auth_url)
+    lx.createProcessorRun(lx.ldif_processor, config.request_url, lix_header, lx.lix_api_token)
+    run = lx.createRun(ldif_output, config.request_url, lix_header)
+    lx.startRun(run, config.request_url, lix_header)
     logging.info('LDIF processed by LeanIX iAPI.')
     logging.info('----- End -----')
