@@ -8,7 +8,7 @@
 ## Abstract
 The purpose of this script is to extract data from Smartsheet, transform it to LeanIX Data Interchange Format (LDIF), and load it into a LeanIX workspace.  The relationship hierarchy is structured: Workspace / Sheet / Task / Subtask.  As a best practice, we do not want to have more than four layers in a hierarchy (although the script will allow it).  This connector is meant to be run as a Lambda/Azure function on a schedule, using a key store as best practice.  
 
-### Setup
+## Setup
 - Create a technical user in Smartsheet and LeanIX. 
 - Share all desired Smartsheet workspaces and sheets with the integration user.
 - Create an API token for the technical user in Smartsheet and LeanIX.  
@@ -21,7 +21,7 @@ The purpose of this script is to extract data from Smartsheet, transform it to L
 - Package the sh_processor.json and config.yml with sh_get_sheet.py and its dependendencies.  
 - Implement on serverless infrastructure in your cloud of choice.
 
-### Current functionality
+## Current functionality
 - list all workspaces, sheets, and sub/tasks
 - extract data from all workspaces, sheets, and sub/tasks
 - transform data to ldif
