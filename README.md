@@ -15,7 +15,7 @@ The purpose of this script is to extract data from Smartsheet, transform it to L
 - Ensure the config.yml has been configured with the desired field mapping, url's and log level. 
   - Any fields that contain spaces or special characters should be mapped to an API friendly name, e.g. "Project Phase": "projectPhase"
   - If adding fields to the field_mapper, they should also be added in the sh_processor.json where necessary.
-  - See (LeanIX iAPI documentation)[https://docs-eas.leanix.net/docs/inbound-processors] for help mapping new fields.      
+  - See [LeanIX iAPI documentation](https://docs-eas.leanix.net/docs/inbound-processors) for help mapping new fields.      
 - Insert key store code in sh_get_sheet.py on line 21, returning the Smartsheet API token.
 - Insert key store code in sh_get_sheet.py on line 165, returning the LeanIX API token.
 - Package the sh_processor.json and config.yml with sh_get_sheet.py and its dependendencies.  
